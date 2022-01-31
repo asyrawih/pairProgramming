@@ -1,3 +1,3 @@
-module Gossh
+module pairProgramming 
 
 go 1.17

@@ -2,84 +2,42 @@ package main
 
 import (
 	"encoding/json"
-	"fmt"
 	"io/ioutil"
 	"net/http"
+	"pairProgramming/helper"
 )
 
-type ResponsePokemon struct {
-	Count    int       `json:"count"`
-	Next     int       `json:"next"`
-	Previous int       `json:"previous"`
-	Results  []Pokemon `json:"results"`
+type ResponsePost struct {
+	UserId int    `json:"userId"`
+	Id     int    `json:"id"`
+	Title  string `json:"title"`
+	Body   string `json:"body"`
 }
-
-type Pokemon struct {
-	Name string
-	Url  string
-}
-
-var baseUrl = "https://pokeapi.co/api/v2/"
 
 func main() {
-	p := ResponsePokemon{}
-	pokemon, err := p.getPokemon()
+	res, err := getPost()
+	helper.PanicIfNeed(err)
 
-	if err != nil {
-		fmt.Print(err)
-	}
-
-	// Iterate The Pokemon
-	for _, poke := range pokemon.Results {
-		fmt.Println(poke.Name)
-		fmt.Println(poke.Url)
+	for _, post := range res {
+		helper.Print(post.Title)
 	}
 }
 
-// without Struct
-func fetcPokemon() (responsePokemon *ResponsePokemon, err error) {
+func getPost() (posts []ResponsePost, err error) {
+	var result []byte
 
-	response, err := http.Get("https://pokeapi.co/api/v2/berry-flavor/")
+	go func() {
+		client, err := http.Get("https://jsonplaceholder.typicode.com/posts")
+		helper.PanicIfNeed(err)
+		defer client.Body.Close()
+		result, err = ioutil.ReadAll(client.Body)
+		helper.PanicIfNeed(err)
+	}()
 
-	if err != nil {
-		panic(err)
-	}
-
-	defer response.Body.Close()
-
-	result, err := ioutil.ReadAll(response.Body)
-
-	if err != nil {
-		return nil, err
-	}
-
-	var data ResponsePokemon
+	var data []ResponsePost
 
 	json.Unmarshal(result, &data)
 
-	return &data, nil
-}
+	return data, nil
 
-// Via Structs
-func (p *ResponsePokemon) getPokemon() (responsePokemon *ResponsePokemon, err error) {
-
-	response, err := http.Get("https://pokeapi.co/api/v2/berry-flavor/")
-
-	if err != nil {
-		panic(err)
-	}
-
-	defer response.Body.Close()
-
-	result, err := ioutil.ReadAll(response.Body)
-
-	if err != nil {
-		return nil, err
-	}
-
-	var data ResponsePokemon
-
-	json.Unmarshal(result, &data)
-
-	return &data, nil
 }
