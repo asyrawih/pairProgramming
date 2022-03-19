@@ -9,16 +9,26 @@ import (
 	"time"
 )
 
+// Wrapper for sendUser return value, used as result channel type
+type Result struct {
+	bodyStr string
+	err     error
+}
+
 // placeholder url. Change it to your base url.
 const BASE_URL = "https://jsonplaceholder.typicode.com/posts/"
 
 // number of parallelism
 // try using only two worker
-const NUM_PARALLEL = 2000
+const NUM_PARALLEL = 100 
 
-// Stream inputs to input channel
+// Stream inputs to input channel 
+// Return Pointer To Some Memory Location
 func streamInputs(done <-chan struct{}, inputs []string) <-chan string {
+
+  // inputs contains some user id on type Array<string>
 	inputCh := make(chan string)
+
 	go func() {
 		defer close(inputCh)
 		for _, input := range inputs {
@@ -35,8 +45,8 @@ func streamInputs(done <-chan struct{}, inputs []string) <-chan string {
 }
 
 // Normal function for HTTP call, no knowledge of goroutine/channels
-func sendUser(user string) (string, error) {
-	url := BASE_URL + user
+func sendUser(userId string) (string, error) {
+	url := BASE_URL + userId 
 	resp, err := http.Get(url)
 	if err != nil {
 		return "", err
@@ -52,30 +62,26 @@ func sendUser(user string) (string, error) {
 	return bodyStr, nil
 }
 
-// Wrapper for sendUser return value, used as result channel type
-type result struct {
-	bodyStr string
-	err     error
-}
 
 func AsyncHTTP(users []string) ([]string, error) {
 	done := make(chan struct{})
 	defer close(done)
 
-	inputCh := streamInputs(done, users)
+	inputChannel := streamInputs(done, users)
 
 	var wg sync.WaitGroup
 	// bulk add goroutine counter at the start
 	wg.Add(NUM_PARALLEL)
 
-	resultCh := make(chan result)
+	resultCh := make(chan Result)
 
 	for i := 0; i < NUM_PARALLEL; i++ {
 		// spawn N worker goroutines, each is consuming a shared input channel.
 		go func() {
-			for input := range inputCh {
+			for input := range inputChannel {
+        // API CALL
 				bodyStr, err := sendUser(input)
-				resultCh <- result{bodyStr, err}
+				resultCh <- Result{bodyStr, err}
 			}
 			wg.Done()
 		}()
@@ -88,17 +94,21 @@ func AsyncHTTP(users []string) ([]string, error) {
 	}()
 
 	results := []string{}
+
 	for result := range resultCh {
+
 		if result.err != nil {
 			// return early. done channel is closed, thus input channel is also closed.
 			// all worker goroutines stop working (because input channel is closed)
 			return nil, result.err
+
 		}
 		results = append(results, result.bodyStr)
 	}
 
 	return results, nil
 }
+
 
 func main() {
 	// populate users param
@@ -107,9 +117,13 @@ func main() {
 		users = append(users, strconv.Itoa(i))
 	}
 
+	fmt.Println("Please Press Enter To Continue")
+	fmt.Scanln()
+	// Print User Appended Before goroutine Launnch
 	start := time.Now()
 
 	results, err := AsyncHTTP(users)
+
 	if err != nil {
 		fmt.Println(err)
 		return

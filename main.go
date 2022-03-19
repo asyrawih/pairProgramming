@@ -7,6 +7,11 @@ import (
 	"pairProgramming/helper"
 )
 
+type PersonResponse struct {
+	Name string
+	Age  string
+}
+
 type ResponsePost struct {
 	UserId int    `json:"userId"`
 	Id     int    `json:"id"`
@@ -17,7 +22,6 @@ type ResponsePost struct {
 func main() {
 	res, err := getPost()
 	helper.PanicIfNeed(err)
-
 	for _, post := range res {
 		helper.Print(post.Title)
 	}
@@ -26,7 +30,7 @@ func main() {
 func getPost() (posts []ResponsePost, err error) {
 	var result []byte
 
-	go func() {
+	func() {
 		client, err := http.Get("https://jsonplaceholder.typicode.com/posts")
 		helper.PanicIfNeed(err)
 		defer client.Body.Close()
